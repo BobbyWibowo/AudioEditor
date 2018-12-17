@@ -74,7 +74,8 @@ public class Main {
                 playing = new AudioFilePlayer(selectedFile);
                 playing.play();
             } catch (IOException | LineUnavailableException | UnsupportedAudioFileException e) {
-                e.printStackTrace();
+                if (!(e instanceof UnsupportedAudioFileException)) e.printStackTrace();
+                form.showExceptionDialog(e.getMessage());
             }
         });
 
