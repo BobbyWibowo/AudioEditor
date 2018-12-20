@@ -50,6 +50,7 @@
                 <constraints/>
                 <properties>
                   <editable value="false"/>
+                  <font name="Monospaced"/>
                 </properties>
               </component>
             </children>
@@ -87,4 +88,7 @@
       </component>
     </children>
   </grid>
+  <inspectionSuppressions>
+    <suppress inspection="NoLabelFor"/>
+  </inspectionSuppressions>
 </form>

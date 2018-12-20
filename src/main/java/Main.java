@@ -3,6 +3,14 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
+
+class ReadAudioBytesResults {
+    ArrayList<byte[]> array;
+    int bytesPerFrame;
+    int numBytes;
+    int totalFramesRead;
+}
 
 public class Main {
 
@@ -45,23 +53,33 @@ public class Main {
 
         form.readButton.addActionListener(actionEvent -> {
             try {
-                ArrayList<byte[]> audioBytes = readAudioBytes(selectedFile);
+                ReadAudioBytesResults results = readAudioBytes(selectedFile);
 
                 long totalBytes = 0;
-                for (byte[] audioByteArr : audioBytes) {
+                for (byte[] audioBytes : results.array) {
                     // System.out.println(Arrays.toString(audioByte));
-                    totalBytes += (long) audioByteArr.length;
+                    totalBytes += (long) audioBytes.length;
                 }
 
-                JTextArea textArea = form.audioBytesTextArea;
-                textArea.append("Directory: " + selectedFile.getParent() + "\n");
-                textArea.append("File: " + selectedFile.getName() + "\n");
                 long size = selectedFile.length();
-                textArea.append("Size: " + size + " bytes (" + humanReadableByteCount(size, false) + ")\n");
-                textArea.append("Debug:\n");
-                textArea.append("    audioBytes.size(): " + audioBytes.size() + "\n");
-                textArea.append("    audioBytes.get(0).length: " + audioBytes.get(0).length + "\n");
-                textArea.append("    totalBytes: " + totalBytes + "\n\n");
+                int last = results.array.size() - 1;
+                int lastLen = String.valueOf(last).length();
+                String zero = String.format("%0" + lastLen + "d", 0);
+
+                String text = "";
+                text += "Directory: " + selectedFile.getParent() + "\n";
+                text += "File: " + selectedFile.getName() + "\n";
+                text += "Size: " + size + " bytes (" + humanReadableByteCount(size, false) + ")\n";
+                text += "Debug:\n";
+                text += "    array.size()   : " + results.array.size() + "\n";
+                text += "    bytesPerFrame  : " + results.bytesPerFrame + "\n";
+                text += "    numBytes       : " + results.numBytes + "\n";
+                text += "    totalFramesRead: " + results.totalFramesRead + "\n";
+                text += "    totalBytes     : " + totalBytes + "\n";
+                text += "    " + zero + ": " + Arrays.toString(results.array.get(0)) + "\n";
+                text += "    " + last + ": " + Arrays.toString(results.array.get(last)) + "\n\n";
+
+                form.audioBytesTextArea.append(text);
             } catch (IOException | UnsupportedAudioFileException e) {
                 if (!(e instanceof UnsupportedAudioFileException)) e.printStackTrace();
                 form.showExceptionDialog(e.getMessage());
@@ -87,7 +105,7 @@ public class Main {
         });
     }
 
-    private static ArrayList<byte[]> readAudioBytes(File file) throws IOException, UnsupportedAudioFileException {
+    private static ReadAudioBytesResults readAudioBytes(File file) throws IOException, UnsupportedAudioFileException {
         AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(file);
         AudioFormat audioFormat = audioInputStream.getFormat();
 
@@ -113,12 +131,19 @@ public class Main {
             totalFramesRead += numFramesRead;
 
             // Clone bytes array then add to ArrayList
-            byte[] audioBytesClone = audioBytes.clone();
-            arrayList.add(audioBytesClone);
+            // byte[] audioBytesClone = audioBytes.clone();
+            arrayList.add(audioBytes);
+
+            // Create new empty array over the buffer array
+            audioBytes = new byte[numBytes];
         }
 
-        // System.out.println("totalFramesRead: " + totalFramesRead);
-        return arrayList;
+        ReadAudioBytesResults results = new ReadAudioBytesResults();
+        results.array = arrayList;
+        results.bytesPerFrame = bytesPerFrame;
+        results.numBytes = numBytes;
+        results.totalFramesRead = totalFramesRead;
+        return results;
     }
 
     private static String humanReadableByteCount(long bytes, boolean si) {
