@@ -1,3 +1,5 @@
+package me.fiery.AudioEditor;
+
 import javax.swing.*;
 
 public class Form {
@@ -11,13 +13,14 @@ public class Form {
     JPanel audioBytesPanel;
     JScrollPane audioBytesScrollPane;
     JTextArea audioBytesTextArea;
+    JButton clearButton;
 
-    void setPlaying(boolean isPlaying) {
-        playButton.setEnabled(!isPlaying);
-        stopButton.setEnabled(isPlaying);
+    void setReady(boolean isReady) {
+        playButton.setEnabled(isReady);
+        stopButton.setEnabled(isReady);
     }
 
     void showExceptionDialog (String message) {
-        JOptionPane.showMessageDialog(parentPanel, message, "Error", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(parentPanel, message, "An error occurred!", JOptionPane.ERROR_MESSAGE);
     }
 }

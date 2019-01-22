@@ -1,4 +1,0 @@
-Manifest-Version: 1.0
-Class-Path: vorbisspi-1.0.3.3.jar jlayer-1.0.1-1.jar mp3spi-1.9.5-1.ja
- r jorbis-0.0.17.4.jar tritonus-share-0.3.7.4.jar junit-3.8.2.jar
-Main-Class: Main
