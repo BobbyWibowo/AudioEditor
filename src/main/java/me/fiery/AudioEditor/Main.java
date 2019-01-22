@@ -13,7 +13,6 @@ public class Main {
     private static boolean isReading = false;
 
     public static void main(String[] args) {
-        // Form
         Form form = new Form();
 
         JFrame frame = new JFrame("Form");
