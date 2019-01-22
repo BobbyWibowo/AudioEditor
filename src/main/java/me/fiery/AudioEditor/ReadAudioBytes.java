@@ -71,11 +71,10 @@ class ReadAudioBytes implements Runnable {
                 numFramesRead = numBytesRead / bytesPerFrame;
                 totalFramesRead += numFramesRead;
 
-                // Clone bytes array then add to ArrayList
-                // byte[] audioBytesClone = audioBytes.clone();
+                // Add bytes array to ArrayList
                 arrayList.add(audioBytes);
 
-                // Create new empty array over the buffer array
+                // Create a new empty bytes array
                 audioBytes = new byte[numBytes];
             }
 
