@@ -1,7 +1,5 @@
 package me.fiery.AudioEditor;
 
-import com.sun.istack.internal.Nullable;
-
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -17,7 +15,6 @@ interface ReadAudioBytesCallback {
 }
 
 class ReadAudioBytesResults {
-    @Nullable
     Exception exception = null;
     AudioFormat audioFormat;
     ArrayList<byte[]> array;

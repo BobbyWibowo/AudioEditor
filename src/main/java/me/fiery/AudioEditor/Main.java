@@ -1,7 +1,5 @@
 package me.fiery.AudioEditor;
 
-import com.sun.istack.internal.Nullable;
-
 import javax.sound.sampled.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -10,8 +8,8 @@ import java.util.Arrays;
 
 public class Main {
 
-    @Nullable private static File file = null;
-    @Nullable private static AudioBytesPlayer audioBytesPlayer = null;
+    private static File file = null;
+    private static AudioBytesPlayer audioBytesPlayer = null;
     private static boolean isReading = false;
 
     public static void main(String[] args) {

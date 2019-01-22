@@ -1,7 +1,5 @@
 package me.fiery.AudioEditor;
 
-import com.sun.istack.internal.Nullable;
-
 import java.util.ArrayList;
 
 import javax.sound.sampled.AudioFormat;
@@ -67,7 +65,7 @@ class AudioBytesPlayerThread implements Runnable {
 
 class AudioBytesPlayer {
     private AudioBytesPlayerThread audioBytesPlayerThread;
-    @Nullable private Thread thread = null;
+    private Thread thread = null;
 
     AudioBytesPlayer(AudioFormat audioFormat, ArrayList<byte[]> bytesArray) throws LineUnavailableException {
         Info info = new Info(SourceDataLine.class, audioFormat);
