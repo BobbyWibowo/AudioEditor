@@ -4,6 +4,7 @@ import javax.sound.sampled.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Main {
@@ -59,10 +60,11 @@ public class Main {
             form.readButton.setText("Reading...");
             form.readButton.setEnabled(false);
 
-            new Thread(new ReadAudioBytes(file, results -> {
-                if (results.exception == null) {
+            new Thread(new ReadAudioBytes(file, result -> {
+                if (result.exception == null) {
+
                     long totalBytes = 0;
-                    for (byte[] audioBytes : results.array)
+                    for (byte[] audioBytes : result.array)
                         totalBytes += (long) audioBytes.length;
 
                     long size = file.length();
@@ -72,37 +74,45 @@ public class Main {
                     text += "File: " + file.getName() + "\n";
                     text += "Size: " + size + " bytes (" + humanReadableByteCount(size, false) + ")\n";
                     text += "Debug:\n";
-                    text += "    arraySize : " + results.array.size() + "\n";
-                    text += "    frameSize : " + results.audioFormat.getFrameSize() + "\n";
-                    text += "    numBytes  : " + results.numBytes + "\n";
-                    text += "    framesRead: " + results.totalFramesRead + "\n";
-                    text += "    totalBytes: " + totalBytes + "\n";
+                    text += "    arraySize  : " + result.array.size() + "\n";
+                    text += "    frameSize  : " + result.audioFormat.getFrameSize() + "\n";
+                    text += "    numBytes   : " + result.numBytes + "\n";
+                    text += "    framesRead : " + result.totalFramesRead + "\n";
+                    text += "    totalBytes : " + totalBytes + "\n";
                     text += "\n";
 
                     form.audioBytesTextArea.append(text);
 
-                    int mid = results.array.size() / 2;
-                    int last = results.array.size() - 1;
-                    int lastLen = String.valueOf(last).length();
-
-                    String zero = String.format("%0" + lastLen + "d", 0);
-                    String mids = String.format("%0" + lastLen + "d", mid);
-
-                    System.out.println(zero + ": " + Arrays.toString(results.array.get(0)));
-                    System.out.println(mids + ": " + Arrays.toString(results.array.get(mid)));
-                    System.out.println(last + ": " + Arrays.toString(results.array.get(last)));
-
                     try {
                         form.setReady(true);
-                        audioBytesPlayer = new AudioBytesPlayer(results.audioFormat, results.array);
+                        audioBytesPlayer = new AudioBytesPlayer(result.audioFormat, result.array);
                     } catch (LineUnavailableException e) {
                         e.printStackTrace();
                         form.showExceptionDialog(e.getMessage());
                     }
+
+                    // Debugging arrays
+                    shortDebugArrayList(result.array);
+                    ArrayList<short[]> paired = BytesVoodoo.pair(
+                            result.array,
+                            result.audioFormat.getFrameSize(),
+                            result.audioFormat.getChannels(),
+                            result.audioFormat.isBigEndian()
+                    );
+                    shortDebugArrayList(paired);
+                    /*
+                    ArrayList<byte[]> severed = BytesVoodoo.sever(
+                            paired,
+                            result.audioFormat.getFrameSize(),
+                            result.audioFormat.getChannels(),
+                            result.audioFormat.isBigEndian()
+                    );
+                    shortDebugArrayList(severed);
+                    */
                 } else {
-                    if (!(results.exception instanceof UnsupportedAudioFileException))
-                        results.exception.printStackTrace();
-                    form.showExceptionDialog(results.exception.getMessage());
+                    if (!(result.exception instanceof UnsupportedAudioFileException))
+                        result.exception.printStackTrace();
+                    form.showExceptionDialog(result.exception.getMessage());
                 }
 
                 isReading = false;
@@ -135,6 +145,29 @@ public class Main {
         });
 
         form.clearButton.addActionListener(actionEvent -> form.audioBytesTextArea.setText(""));
+    }
+
+    private static String stringifyArray(Object array) {
+        if (array instanceof byte[])
+            return Arrays.toString((byte[]) array);
+        else if (array instanceof short[])
+            return Arrays.toString((short[]) array);
+        else if (array instanceof int[])
+            return Arrays.toString((int[]) array);
+        return null;
+    }
+
+    private static void shortDebugArrayList(ArrayList arrayList) {
+        int mid = arrayList.size() / 2;
+        int last = arrayList.size() - 1;
+        int lastLen = String.valueOf(last).length();
+
+        String zero = String.format("%0" + lastLen + "d", 0);
+        String mids = String.format("%0" + lastLen + "d", mid);
+
+        System.out.println(zero + ": " + stringifyArray(arrayList.get(0)));
+        System.out.println(mids + ": " + stringifyArray(arrayList.get(mid)));
+        System.out.println(last + ": " + stringifyArray(arrayList.get(last)));
     }
 
     private static String humanReadableByteCount(long bytes, boolean si) {

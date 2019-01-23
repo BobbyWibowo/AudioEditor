@@ -11,15 +11,15 @@ import java.util.ArrayList;
 import static javax.sound.sampled.AudioFormat.Encoding.PCM_SIGNED;
 
 interface ReadAudioBytesCallback {
-    void run(ReadAudioBytesResults readAudioBytesResults);
+    void run(ReadAudioBytesResult readAudioBytesResults);
 }
 
-class ReadAudioBytesResults {
+class ReadAudioBytesResult {
     Exception exception = null;
-    AudioFormat audioFormat;
-    ArrayList<byte[]> array;
-    int numBytes;
-    int totalFramesRead;
+    AudioFormat audioFormat = null;
+    ArrayList<byte[]> array = null;
+    int numBytes = 0;
+    long totalFramesRead = 0;
 }
 
 class ReadAudioBytes implements Runnable {
@@ -32,38 +32,29 @@ class ReadAudioBytes implements Runnable {
     }
 
     public void run () {
-        ReadAudioBytesResults results = new ReadAudioBytesResults();
+        ReadAudioBytesResult result = new ReadAudioBytesResult();
 
         try {
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(this.file);
             AudioFormat audioFormat = audioInputStream.getFormat();
             System.out.println(audioFormat);
 
-            // If not PCM_SIGNED, convert
-            if (audioFormat.getEncoding() != PCM_SIGNED) {
-                final int ch = audioFormat.getChannels();
-                final float rate = audioFormat.getSampleRate();
-                audioFormat = new AudioFormat(PCM_SIGNED, rate, 16, ch, ch * 2, rate, false);
-                System.out.println(audioFormat);
-                audioInputStream = AudioSystem.getAudioInputStream(audioFormat, audioInputStream);
-            }
+            // We want uniform 16-bit, stereo, PCM_SIGNED
+            final int ch = audioFormat.getChannels();
+            final float rate = audioFormat.getSampleRate();
+            audioFormat = new AudioFormat(PCM_SIGNED, rate, 16, ch, ch * 2, rate, false);
+            audioInputStream = AudioSystem.getAudioInputStream(audioFormat, audioInputStream);
+            System.out.println(audioFormat);
+
+            // Container for all buffers of 1024 frames
+            ArrayList<byte[]> arrayList = new ArrayList<>();
 
             int bytesPerFrame = audioFormat.getFrameSize();
-            /* NOTE: I don't think this will ever happen since we convert to PCM_SIGNED prior
-            if (bytesPerFrame == AudioSystem.NOT_SPECIFIED) {
-                // some audio formats may have unspecified frame size
-                // in that case we may read any amount of bytes
-                bytesPerFrame = 1;
-            }
-            */
-
-            int totalFramesRead = 0;
-            ArrayList<byte[]> arrayList = new ArrayList<>();
-            // Set an arbitrary buffer size of 1024 frames.
             int numBytesRead;
             int numFramesRead;
+            long totalFramesRead = 0;
 
-            // Try to read numBytes bytes from the file.
+            // Set an arbitrary buffer size of 1024 frames
             int numBytes = 1024 * bytesPerFrame;
             byte[] audioBytes = new byte[numBytes];
             while ((numBytesRead = audioInputStream.read(audioBytes, 0, audioBytes.length)) != -1) {
@@ -78,14 +69,14 @@ class ReadAudioBytes implements Runnable {
                 audioBytes = new byte[numBytes];
             }
 
-            results.audioFormat = audioFormat;
-            results.array = arrayList;
-            results.numBytes = numBytes;
-            results.totalFramesRead = totalFramesRead;
+            result.audioFormat = audioFormat;
+            result.array = arrayList;
+            result.numBytes = numBytes;
+            result.totalFramesRead = totalFramesRead;
         } catch (IOException | UnsupportedAudioFileException e) {
-            results.exception = e;
+            result.exception = e;
         }
 
-        this.callback.run(results);
+        this.callback.run(result);
     }
 }
