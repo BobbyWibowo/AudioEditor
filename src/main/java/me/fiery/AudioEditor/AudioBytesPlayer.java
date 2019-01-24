@@ -9,6 +9,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
 class AudioBytesPlayerThread implements Runnable {
+
     static final int STOPPED = 0;
     static final int PLAYING = 1;
     static final int PAUSED = 2;
@@ -61,9 +62,11 @@ class AudioBytesPlayerThread implements Runnable {
     void setState(int state) {
         this.state = state;
     }
+
 }
 
 class AudioBytesPlayer {
+
     private AudioBytesPlayerThread audioBytesPlayerThread;
     private Thread thread = null;
 
@@ -100,4 +103,5 @@ class AudioBytesPlayer {
             }
         }
     }
+
 }

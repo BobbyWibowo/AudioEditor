@@ -4,7 +4,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 
-class BytesVoodoo {
+class BytesUtil {
+
     private static ByteBuffer setByteBufferOrder(ByteBuffer byteBuffer, boolean isBigEndian) {
         if (isBigEndian)
             return byteBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -12,8 +13,9 @@ class BytesVoodoo {
             return byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
     }
 
-    static ArrayList<short[]> pair(ArrayList<byte[]> array, int bytesPerFrame, int channel, boolean isBigEndian) {
+    static ArrayList<short[]> pair(ArrayList<byte[]> array, int bit, int channel, boolean isBigEndian) {
         ArrayList<short[]> result = new ArrayList<>();
+        int bytesPerFrame = (bit / 8) * channel;
         int pairSize = bytesPerFrame / channel;
         for (byte[] buffer : array) {
             short[] bytesPaired = new short[buffer.length / pairSize];
@@ -30,8 +32,9 @@ class BytesVoodoo {
         return result;
     }
 
-    static ArrayList<byte[]> sever(ArrayList<short[]> array, int bytesPerFrame, int channel, boolean isBigEndian) {
+    static ArrayList<byte[]> sever(ArrayList<short[]> array, int bit, int channel, boolean isBigEndian) {
         ArrayList<byte[]> result = new ArrayList<>();
+        int bytesPerFrame = (bit / 8) * channel;
         int pairSize = bytesPerFrame / channel;
         for (short[] buffer : array) {
             byte[] bytesSevered = new byte[buffer.length * pairSize];
@@ -48,4 +51,5 @@ class BytesVoodoo {
         }
         return result;
     }
+
 }
