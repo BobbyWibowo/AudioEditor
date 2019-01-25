@@ -8,39 +8,48 @@ import javax.sound.sampled.DataLine.Info;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
+interface OnProgressCallback {
+    void run(long streamedBytes, long totalBytes);
+}
+
 class AudioBytesPlayerThread implements Runnable {
 
     static final int STOPPED = 0;
     static final int PLAYING = 1;
     static final int PAUSED = 2;
 
-    private ArrayList<byte[]> array;
-    private AudioFormat format;
-    private SourceDataLine line;
+    private ArrayList<byte[]> arrayList;
+    private AudioFormat audioFormat;
+    private SourceDataLine sourceDataLine;
     private int state = STOPPED;
+    private long totalBytes = 0;
+    private OnProgressCallback onProgressCallback;
 
-    AudioBytesPlayerThread(ArrayList<byte[]> bytesArray, AudioFormat audioFormat, SourceDataLine sourceDataLine) {
-        this.array = bytesArray;
-        this.format = audioFormat;
-        this.line = sourceDataLine;
+    AudioBytesPlayerThread(ArrayList<byte[]> arrayList, AudioFormat audioFormat, SourceDataLine sourceDataLine) {
+        this.arrayList = arrayList;
+        this.audioFormat = audioFormat;
+        this.sourceDataLine = sourceDataLine;
+        for (byte[] buffer : arrayList)
+            totalBytes += buffer.length;
     }
 
     @Override
     public void run() {
         try {
-            line.open(format);
-            line.start();
+            sourceDataLine.open(audioFormat);
+            sourceDataLine.start();
             this.state = PLAYING;
             this.stream();
-            line.stop();
-            line.close();
+            sourceDataLine.stop();
+            sourceDataLine.close();
         } catch (LineUnavailableException e) {
             e.printStackTrace();
         }
     }
 
     private void stream() {
-        for (byte[] buffer : this.array) {
+        long streamedBytes = 0;
+        for (byte[] buffer : this.arrayList) {
             if (this.state == STOPPED)
                 return;
             // If it's stupid but it works, it ain't stupid
@@ -51,7 +60,10 @@ class AudioBytesPlayerThread implements Runnable {
                     e.printStackTrace();
                 }
             }
-            line.write(buffer, 0, buffer.length);
+            sourceDataLine.write(buffer, 0, buffer.length);
+            streamedBytes += buffer.length;
+            if (this.onProgressCallback != null)
+                this.onProgressCallback.run(streamedBytes, this.totalBytes);
         }
     }
 
@@ -63,17 +75,21 @@ class AudioBytesPlayerThread implements Runnable {
         this.state = state;
     }
 
+    void setOnProgressCallback(OnProgressCallback onProgressCallback) {
+        this.onProgressCallback = onProgressCallback;
+    }
+
 }
 
 class AudioBytesPlayer {
 
     private AudioBytesPlayerThread audioBytesPlayerThread;
-    private Thread thread = null;
+    private Thread thread;
 
-    AudioBytesPlayer(AudioFormat audioFormat, ArrayList<byte[]> bytesArray) throws LineUnavailableException {
+    AudioBytesPlayer(AudioFormat audioFormat, ArrayList<byte[]> arrayList) throws LineUnavailableException {
         Info info = new Info(SourceDataLine.class, audioFormat);
         SourceDataLine sourceDataLine = (SourceDataLine) AudioSystem.getLine(info);
-        audioBytesPlayerThread = new AudioBytesPlayerThread(bytesArray, audioFormat, sourceDataLine);
+        audioBytesPlayerThread = new AudioBytesPlayerThread(arrayList, audioFormat, sourceDataLine);
     }
 
     int getState() {
@@ -102,6 +118,10 @@ class AudioBytesPlayer {
                 e.printStackTrace();
             }
         }
+    }
+
+    void onProgress(OnProgressCallback onProgressCallback) {
+        audioBytesPlayerThread.setOnProgressCallback(onProgressCallback);
     }
 
 }

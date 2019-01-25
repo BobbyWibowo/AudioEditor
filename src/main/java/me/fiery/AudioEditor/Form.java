@@ -5,6 +5,8 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -16,12 +18,14 @@ public class Form {
     JButton playButton;
     JButton stopButton;
     JButton readButton;
-    JPanel audioBytesPanel;
-    JScrollPane audioBytesScrollPane;
-    JTextArea audioBytesTextArea;
+    JPanel logsPanel;
+    JScrollPane logsScrollPane;
+    JTextArea logsTextArea;
     JButton clearButton;
     JButton effectButton;
     JButton resetButton;
+    JLabel progressLabel;
+    JLabel nameLabel;
 
     Form() {
         // Fallback title
@@ -64,7 +68,7 @@ public class Form {
      */
     private void $$$setupUI$$$() {
         parentPanel = new JPanel();
-        parentPanel.setLayout(new GridLayoutManager(4, 3, new Insets(10, 10, 10, 10), -1, -1, true, false));
+        parentPanel.setLayout(new GridLayoutManager(6, 3, new Insets(10, 10, 10, 10), -1, -1, true, false));
         parentPanel.setPreferredSize(new Dimension(500, 500));
         pathTextField = new JTextField();
         pathTextField.setEditable(false);
@@ -74,20 +78,20 @@ public class Form {
         browseButton.setLabel("Browse...");
         browseButton.setText("Browse...");
         parentPanel.add(browseButton, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        audioBytesPanel = new JPanel();
-        audioBytesPanel.setLayout(new GridLayoutManager(2, 1, new Insets(10, 0, 0, 0), -1, -1));
-        parentPanel.add(audioBytesPanel, new GridConstraints(3, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
-        audioBytesPanel.setBorder(BorderFactory.createTitledBorder("Audio Bytes"));
-        audioBytesScrollPane = new JScrollPane();
-        audioBytesPanel.add(audioBytesScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
-        audioBytesTextArea = new JTextArea();
-        audioBytesTextArea.setEditable(false);
-        Font audioBytesTextAreaFont = this.$$$getFont$$$("Monospaced", -1, -1, audioBytesTextArea.getFont());
-        if (audioBytesTextAreaFont != null) audioBytesTextArea.setFont(audioBytesTextAreaFont);
-        audioBytesScrollPane.setViewportView(audioBytesTextArea);
+        logsPanel = new JPanel();
+        logsPanel.setLayout(new GridLayoutManager(2, 1, new Insets(10, 0, 0, 0), -1, -1));
+        parentPanel.add(logsPanel, new GridConstraints(5, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        logsPanel.setBorder(BorderFactory.createTitledBorder("Message Logs"));
+        logsScrollPane = new JScrollPane();
+        logsPanel.add(logsScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
+        logsTextArea = new JTextArea();
+        logsTextArea.setEditable(false);
+        Font logsTextAreaFont = this.$$$getFont$$$("Monospaced", -1, -1, logsTextArea.getFont());
+        if (logsTextAreaFont != null) logsTextArea.setFont(logsTextAreaFont);
+        logsScrollPane.setViewportView(logsTextArea);
         clearButton = new JButton();
         clearButton.setText("Clear");
-        audioBytesPanel.add(clearButton, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        logsPanel.add(clearButton, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         playButton = new JButton();
         playButton.setEnabled(false);
         playButton.setLabel("Play");
@@ -104,12 +108,20 @@ public class Form {
         effectButton.setEnabled(false);
         effectButton.setLabel("Apply Mono-Stereo* Effect");
         effectButton.setText("Apply Mono-Stereo* Effect");
-        effectButton.setToolTipText("We are actually just fading volume from one channel to the other, back and forth...");
-        parentPanel.add(effectButton, new GridConstraints(2, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        effectButton.setToolTipText("This will only mix channels then manipulate their volumes.");
+        parentPanel.add(effectButton, new GridConstraints(4, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         resetButton = new JButton();
         resetButton.setEnabled(false);
         resetButton.setText("Reset");
-        parentPanel.add(resetButton, new GridConstraints(2, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        parentPanel.add(resetButton, new GridConstraints(4, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        progressLabel = new JLabel();
+        progressLabel.setHorizontalAlignment(0);
+        progressLabel.setText("00:00 / 00:00");
+        parentPanel.add(progressLabel, new GridConstraints(3, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        nameLabel = new JLabel();
+        nameLabel.setHorizontalAlignment(0);
+        nameLabel.setText("N/A");
+        parentPanel.add(nameLabel, new GridConstraints(2, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**

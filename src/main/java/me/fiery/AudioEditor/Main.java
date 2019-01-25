@@ -14,8 +14,9 @@ class ReadAudioBytesResult {
     Exception exception = null;
     AudioFormat audioFormat = null;
     ArrayList<byte[]> array = null;
-    int numBytes = 0;
+    int bufferSize = 0;
     long totalFramesRead = 0;
+    AudioFormat oldAudioFormat = null;
 
 }
 
@@ -43,11 +44,6 @@ public class Main {
             // Show dialog
             int returnValue = fileChooser.showOpenDialog(form.parentPanel);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
-                if (audioBytesPlayer != null) {
-                    audioBytesPlayer.stop();
-                    audioBytesPlayer = null;
-                }
-
                 file = fileChooser.getSelectedFile();
                 form.pathTextField.setText(file.getAbsolutePath());
                 setGUIReadyState(false);
@@ -62,6 +58,11 @@ public class Main {
             if (file == null) {
                 form.showExceptionDialog("Please select a file to read!");
                 return;
+            }
+
+            if (audioBytesPlayer != null) {
+                audioBytesPlayer.stop();
+                audioBytesPlayer = null;
             }
 
             isReading = true;
@@ -80,17 +81,22 @@ public class Main {
 
                     String text = "";
                     text += "Directory: " + file.getParent() + "\n";
-                    text += "File: " + file.getName() + "\n";
-                    text += "Size: " + size + " bytes (" + humanReadableByteCount(size, false) + ")\n";
+                    text += "File : " + file.getName() + "\n";
+                    text += "Size : " + size + " bytes (" + humanReadableByteCount(size, false) + ")\n";
                     text += "Debug:\n";
-                    text += "    arraySize  : " + readAudioBytesResult.array.size() + "\n";
-                    text += "    frameSize  : " + readAudioBytesResult.audioFormat.getFrameSize() + "\n";
-                    text += "    numBytes   : " + readAudioBytesResult.numBytes + "\n";
-                    text += "    framesRead : " + readAudioBytesResult.totalFramesRead + "\n";
-                    text += "    totalBytes : " + totalBytes + "\n";
+                    text += "  Original : " + readAudioBytesResult.oldAudioFormat.toString() + "\n";
+                    text += "  Converted: " + readAudioBytesResult.audioFormat.toString() + "\n";
+                    text += "  array.size()   : " + readAudioBytesResult.array.size() + "\n";
+                    text += "  bufferSize     : " + readAudioBytesResult.bufferSize + "\n";
+                    text += "  totalFramesRead: " + readAudioBytesResult.totalFramesRead + "\n";
+                    text += "  totalBytes     : " + totalBytes + "\n";
                     text += "\n";
 
-                    form.audioBytesTextArea.append(text);
+                    form.logsTextArea.append(text);
+
+                    // This feels like a nasty hack
+                    form.nameLabel.setText(file.getName().substring(0, 50) +
+                            (file.getName().length() > 50 ? "..." : ""));
 
                     audioBytesPlayer = getAudioBytesPlayer(
                             readAudioBytesResult.audioFormat,
@@ -151,44 +157,20 @@ public class Main {
 
             new Thread(() -> {
                 ArrayList<short[]> paired = BytesUtil.pair(
-                        readAudioBytesResult.array,
-                        readAudioBytesResult.audioFormat.getSampleSizeInBits(),
-                        readAudioBytesResult.audioFormat.getChannels(),
-                        readAudioBytesResult.audioFormat.isBigEndian()
+                        readAudioBytesResult.audioFormat,
+                        readAudioBytesResult.array
                 );
                 shortDebugArrayList(paired);
 
-                // Fourier Transform is too confusing
-                final int DURATION = 5;
-                double volumeStep = 1.0 / (readAudioBytesResult.audioFormat.getFrameRate() * DURATION);
-                double volume = 1.0;
-
-                boolean left = true;
-                for (short[] pair : paired) {
-                    for (int i = 0; i < pair.length; i += 2) {
-                        if (left) {
-                            pair[i] = (short) (pair[i] * volume);
-                            pair[i + 1] = (short) (pair[i + 1] * (1.0 - volume));
-                        } else {
-                            pair[i] = (short) (pair[i] * (1.0 - volume));
-                            pair[i + 1] = (short) (pair[i + 1] * volume);
-                        }
-
-                        volume -= volumeStep;
-
-                        if (volume <= 0) {
-                            left = !left;
-                            volume = 1.0;
-                        }
-                    }
-                }
-                shortDebugArrayList(paired);
+                ArrayList<short[]> withEffect = AudioEffects.channelMixing(
+                        paired,
+                        readAudioBytesResult.audioFormat.getFrameRate()
+                );
+                shortDebugArrayList(withEffect);
 
                 ArrayList<byte[]> severed = BytesUtil.sever(
-                        paired,
-                        readAudioBytesResult.audioFormat.getSampleSizeInBits(),
-                        readAudioBytesResult.audioFormat.getChannels(),
-                        readAudioBytesResult.audioFormat.isBigEndian()
+                        readAudioBytesResult.audioFormat,
+                        paired
                 );
 
                 audioBytesPlayer = getAudioBytesPlayer(
@@ -220,13 +202,13 @@ public class Main {
         });
 
         // Clear textarea button
-        form.clearButton.addActionListener(actionEvent -> form.audioBytesTextArea.setText(""));
+        form.clearButton.addActionListener(actionEvent -> form.logsTextArea.setText(""));
     }
 
     private static void setGUIReadyState(boolean isReady) {
         form.playButton.setText("Play");
         form.playButton.setEnabled(isReady);
-        form.stopButton.setEnabled(isReady);
+        form.stopButton.setEnabled(false);
         form.effectButton.setEnabled(isReady);
         form.resetButton.setEnabled(false);
     }
@@ -240,6 +222,12 @@ public class Main {
         AudioBytesPlayer audioBytesPlayer = null;
         try {
             audioBytesPlayer = new AudioBytesPlayer(audioFormat, array);
+            audioBytesPlayer.onProgress((streamedBytes, totalBytes) -> {
+                float divider = audioFormat.getFrameRate() * audioFormat.getFrameSize();
+                int elapsed = (int) (streamedBytes / divider * 1000);
+                int total = (int) (totalBytes / divider * 1000);
+                form.progressLabel.setText(formatMS(elapsed) + " / " + formatMS(total));
+            });
             setGUIReadyState(true);
         } catch (LineUnavailableException e) {
             e.printStackTrace();
@@ -252,47 +240,47 @@ public class Main {
         ReadAudioBytesResult result = new ReadAudioBytesResult();
         try {
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(file);
-            AudioFormat audioFormat = audioInputStream.getFormat();
-            System.out.println(audioFormat);
+            result.oldAudioFormat = audioInputStream.getFormat();
+            System.out.println(result.oldAudioFormat);
 
             // We want uniform 16-bit, stereo, PCM_SIGNED
-            final int ch = audioFormat.getChannels();
-            final float rate = audioFormat.getSampleRate();
-            audioFormat = new AudioFormat(PCM_SIGNED, rate, 16, ch, ch * 2, rate, false);
-            audioInputStream = AudioSystem.getAudioInputStream(audioFormat, audioInputStream);
-            System.out.println(audioFormat);
+            final int ch = result.oldAudioFormat.getChannels();
+            final float rate = result.oldAudioFormat.getSampleRate();
+            result.audioFormat = new AudioFormat(PCM_SIGNED, rate, 16, ch, ch * 2, rate, false);
+            audioInputStream = AudioSystem.getAudioInputStream(result.audioFormat, audioInputStream);
+            System.out.println(result.audioFormat);
 
             // Container for all buffers of 1024 frames
-            ArrayList<byte[]> arrayList = new ArrayList<>();
+            result.array = new ArrayList<>();
 
-            int bytesPerFrame = audioFormat.getFrameSize();
+            int bytesPerFrame = result.audioFormat.getFrameSize();
             int numBytesRead;
             int numFramesRead;
-            long totalFramesRead = 0;
 
             // Set an arbitrary buffer size of 1024 frames
-            int numBytes = 1024 * bytesPerFrame;
-            byte[] audioBytes = new byte[numBytes];
+            result.bufferSize = 1024 * bytesPerFrame;
+            byte[] audioBytes = new byte[result.bufferSize];
             while ((numBytesRead = audioInputStream.read(audioBytes, 0, audioBytes.length)) != -1) {
                 // Calculate the number of frames actually read.
                 numFramesRead = numBytesRead / bytesPerFrame;
-                totalFramesRead += numFramesRead;
+                result.totalFramesRead += numFramesRead;
 
                 // Add bytes array to ArrayList
-                arrayList.add(audioBytes);
+                result.array.add(audioBytes);
 
                 // Create a new empty bytes array
-                audioBytes = new byte[numBytes];
+                audioBytes = new byte[result.bufferSize];
             }
-
-            result.audioFormat = audioFormat;
-            result.array = arrayList;
-            result.numBytes = numBytes;
-            result.totalFramesRead = totalFramesRead;
         } catch (IOException | UnsupportedAudioFileException e) {
             result.exception = e;
         }
         return result;
+    }
+
+    private static String formatMS(int ms) {
+        int minutes = ms / (60 * 1000);
+        int seconds = (ms / 1000) % 60;
+        return String.format("%d:%02d", minutes, seconds);
     }
 
     private static String stringifyArray(Object array) {
