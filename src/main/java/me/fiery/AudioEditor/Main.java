@@ -73,6 +73,9 @@ public class Main {
                 readAudioBytesResult = readAudioBytes(file);
 
                 if (readAudioBytesResult.exception == null) {
+                    System.out.println("DEBUG: array of byte[]:");
+                    shortDebugArrayList(readAudioBytesResult.array);
+
                     long totalBytes = 0;
                     for (byte[] audioBytes : readAudioBytesResult.array)
                         totalBytes += (long) audioBytes.length;
@@ -162,12 +165,14 @@ public class Main {
                         readAudioBytesResult.audioFormat,
                         readAudioBytesResult.array
                 );
+                System.out.println("DEBUG: array of short[]:");
                 shortDebugArrayList(paired);
 
                 ArrayList<short[]> withEffect = AudioEffects.channelMixing(
                         paired,
                         readAudioBytesResult.audioFormat.getFrameRate()
                 );
+                System.out.println("DEBUG: array of short[] (with mono-stereo* effect):");
                 shortDebugArrayList(withEffect);
 
                 ArrayList<byte[]> severed = BytesUtil.sever(
@@ -222,19 +227,29 @@ public class Main {
 
     private static AudioBytesPlayer getAudioBytesPlayer(AudioFormat audioFormat, ArrayList<byte[]> array) {
         AudioBytesPlayer audioBytesPlayer = null;
+
         try {
             audioBytesPlayer = new AudioBytesPlayer(audioFormat, array);
+
+            float divider = audioFormat.getFrameRate() * audioFormat.getFrameSize();
+
             audioBytesPlayer.onProgress((streamedBytes, totalBytes) -> {
-                float divider = audioFormat.getFrameRate() * audioFormat.getFrameSize();
-                int elapsed = (int) (streamedBytes / divider * 1000);
-                int total = (int) (totalBytes / divider * 1000);
-                form.progressLabel.setText(formatMS(elapsed) + " / " + formatMS(total));
+                int elapsed = (int) (streamedBytes / divider);
+                int total = (int) (totalBytes / divider);
+                form.progressLabel.setText(formatTime(elapsed) + " / " + formatTime(total));
             });
+
+            audioBytesPlayer.onStopped((totalBytes) -> {
+                int total = (int) (totalBytes / divider);
+                form.progressLabel.setText("00:00 / " + formatTime(total));
+            });
+
             setGUIReadyState(true);
         } catch (LineUnavailableException e) {
             e.printStackTrace();
             form.showExceptionDialog(e.getMessage());
         }
+
         return audioBytesPlayer;
     }
 
@@ -243,14 +258,12 @@ public class Main {
         try {
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(file);
             result.oldAudioFormat = audioInputStream.getFormat();
-            System.out.println(result.oldAudioFormat);
 
             // We want uniform 16-bit, stereo, PCM_SIGNED
-            final int ch = result.oldAudioFormat.getChannels();
+            final int ch = 2;
             final float rate = result.oldAudioFormat.getSampleRate();
             result.audioFormat = new AudioFormat(PCM_SIGNED, rate, 16, ch, ch * 2, rate, false);
             audioInputStream = AudioSystem.getAudioInputStream(result.audioFormat, audioInputStream);
-            System.out.println(result.audioFormat);
 
             // Container for all buffers of 1024 frames
             result.array = new ArrayList<>();
@@ -279,10 +292,9 @@ public class Main {
         return result;
     }
 
-    private static String formatMS(int ms) {
-        int minutes = ms / (60 * 1000);
-        int seconds = (ms / 1000) % 60;
-        return String.format("%d:%02d", minutes, seconds);
+    private static String formatTime(int seconds) {
+        if (seconds <= 0) return String.format("00:00");
+        return String.format("%d:%02d", seconds / 60, seconds % 60);
     }
 
     private static String stringifyArray(Object array) {

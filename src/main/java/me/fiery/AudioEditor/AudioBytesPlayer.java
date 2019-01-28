@@ -12,6 +12,10 @@ interface OnProgressCallback {
     void run(long streamedBytes, long totalBytes);
 }
 
+interface OnStoppedCallback {
+    void run(long totalBytes);
+}
+
 class AudioBytesPlayerThread implements Runnable {
 
     static final int STOPPED = 0;
@@ -24,6 +28,7 @@ class AudioBytesPlayerThread implements Runnable {
     private int state = STOPPED;
     private long totalBytes = 0;
     private OnProgressCallback onProgressCallback;
+    private OnStoppedCallback onStoppedCallback;
 
     AudioBytesPlayerThread(ArrayList<byte[]> arrayList, AudioFormat audioFormat, SourceDataLine sourceDataLine) {
         this.arrayList = arrayList;
@@ -42,6 +47,8 @@ class AudioBytesPlayerThread implements Runnable {
             this.stream();
             sourceDataLine.stop();
             sourceDataLine.close();
+            if (this.onStoppedCallback != null)
+                this.onStoppedCallback.run(this.totalBytes);
         } catch (LineUnavailableException e) {
             e.printStackTrace();
         }
@@ -77,6 +84,10 @@ class AudioBytesPlayerThread implements Runnable {
 
     void setOnProgressCallback(OnProgressCallback onProgressCallback) {
         this.onProgressCallback = onProgressCallback;
+    }
+
+    void setOnStoppedCallback(OnStoppedCallback onStoppedCallback) {
+        this.onStoppedCallback = onStoppedCallback;
     }
 
 }
@@ -122,6 +133,10 @@ class AudioBytesPlayer {
 
     void onProgress(OnProgressCallback onProgressCallback) {
         audioBytesPlayerThread.setOnProgressCallback(onProgressCallback);
+    }
+
+    void onStopped(OnStoppedCallback onStoppedCallback) {
+        audioBytesPlayerThread.setOnStoppedCallback(onStoppedCallback);
     }
 
 }
