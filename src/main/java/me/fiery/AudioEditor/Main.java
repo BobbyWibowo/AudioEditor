@@ -95,8 +95,10 @@ public class Main {
                     form.logsTextArea.append(text);
 
                     // This feels like a nasty hack
-                    form.nameLabel.setText(file.getName().substring(0, 50) +
-                            (file.getName().length() > 50 ? "..." : ""));
+                    String name = file.getName();
+                    if (name.length() > 50)
+                        name = name.substring(0, 50) + "...";
+                    form.nameLabel.setText(name);
 
                     audioBytesPlayer = getAudioBytesPlayer(
                             readAudioBytesResult.audioFormat,
